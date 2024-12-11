@@ -3,7 +3,6 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 
-import { toast } from "@/hooks/use-toast"
 import { Button } from "@/components/ui/button"
 import {
   Form,
@@ -17,7 +16,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { FormSchema } from "@/schema/FormSchema"
 import { z } from "zod"
-import { useActionState } from "react"
+import { startTransition, useActionState, useRef } from "react"
 import { onSubmitAction } from "@/actions"
 const initialState = {
   success: false,
@@ -30,28 +29,29 @@ export function InputForm() {
   )
 
   const form = useForm<z.infer<typeof FormSchema>>({
+    //!Comment below line to disable client-side validation for testing server-side validation
     resolver: zodResolver(FormSchema),
     defaultValues: {
       username: "",
+      password: "",
     },
   })
 
-  function onSubmit(data: z.infer<typeof FormSchema>) {
-    toast({
-      title: "You submitted the following values:",
-      description: (
-        <pre className="mt-2 w-[340px] rounded-md bg-slate-950 p-4">
-          <code className="text-white">{JSON.stringify(data, null, 2)}</code>
-        </pre>
-      ),
-    })
-  }
-
+  const formRef = useRef<HTMLFormElement>(null)
   return (
     <Form {...form}>
       <form
-        onSubmit={form.handleSubmit(onSubmit)}
-        className="max-w-md  space-y-6"
+        ref={formRef}
+        action={formAction}
+        onSubmit={(evt) => {
+          evt.preventDefault()
+          form.handleSubmit(() => {
+            startTransition(() => {
+              formAction(new FormData(formRef.current!))
+            })
+          })(evt)
+        }}
+        className="max-w-md  space-y-3"
       >
         <FormField
           control={form.control}
@@ -69,11 +69,42 @@ export function InputForm() {
             </FormItem>
           )}
         />
+
+        <FormField
+          control={form.control}
+          name="password"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Password</FormLabel>
+              <FormControl>
+                <Input placeholder="********" {...field} />
+              </FormControl>
+              <FormDescription>Enter your password</FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        {/* Show pending state while submiting */}
         <Button disabled={isPending} type="submit">
           {isPending ? "Submiting.." : "Submit"}
         </Button>
-        <p aria-live="polite">{state?.message}</p>
-        {/* <p aria-live="polite">{state?.errors}</p> */}
+
+        {/* Show error messages from server */}
+        <p
+          className={`${!state?.success ? "text-red-500" : "text-green-500"}`}
+          aria-live="polite"
+        >
+          {state?.message}
+        </p>
+        <div aria-live="polite" className="text-red-500">
+          {state?.errors && (
+            <ul>
+              {state.errors.map((error, index) => (
+                <li key={index}>{error}</li>
+              ))}
+            </ul>
+          )}
+        </div>
       </form>
     </Form>
   )

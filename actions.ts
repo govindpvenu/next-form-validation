@@ -1,26 +1,28 @@
 "use server"
 
-import { z } from "zod"
+import { error } from "console"
 import { FormSchema } from "./schema/FormSchema"
 
 export async function onSubmitAction(prevState: any, formData: FormData) {
   try {
     // Parse FormData into an object
     const formDataObj = Object.fromEntries(formData.entries())
+
     // Validate data using Zod schema
     const validatedFields = FormSchema.safeParse(formDataObj)
 
+    // Return early if the form data is invalid
     if (!validatedFields.success) {
       return {
-        errors: validatedFields.error.flatten().fieldErrors,
+        errors: validatedFields.error.issues.map((issue) => issue.message),
       }
     }
 
     const data = validatedFields.data
 
     // Mutate data (example: saving to a database)
-    // await database.users.create(data);
-    console.log(data)
+    await new Promise((resolve) => setTimeout(resolve, 3000))
+    console.log("Submited data in server:", data)
 
     return {
       success: true,
