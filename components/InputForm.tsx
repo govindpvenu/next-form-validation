@@ -16,8 +16,10 @@ import {
 import { Input } from "@/components/ui/input"
 import { FormSchema } from "@/schema/FormSchema"
 import { z } from "zod"
-import { startTransition, useActionState, useRef } from "react"
+import { startTransition, useActionState, useEffect, useRef } from "react"
 import { onSubmitAction } from "@/actions"
+import { LoaderCircle } from "lucide-react"
+import { toast } from "@/hooks/use-toast"
 const initialState = {
   success: false,
   message: "",
@@ -36,21 +38,30 @@ export function InputForm() {
       password: "",
     },
   })
-
+  function onSubmitHandler() {
+    startTransition(() => {
+      formAction(new FormData(formRef.current!))
+    })
+  }
   const formRef = useRef<HTMLFormElement>(null)
+
+  useEffect(() => {
+    if (state?.success) {
+      toast({
+        title: "You submitted the following values:",
+        description: (
+          <pre className="mt-2 w-[340px] rounded-md bg-slate-950 p-4">
+            <code className="text-white">{JSON.stringify(state, null, 2)}</code>
+          </pre>
+        ),
+      })
+    }
+  }, [state])
   return (
     <Form {...form}>
       <form
         ref={formRef}
-        action={formAction}
-        onSubmit={(evt) => {
-          evt.preventDefault()
-          form.handleSubmit(() => {
-            startTransition(() => {
-              formAction(new FormData(formRef.current!))
-            })
-          })(evt)
-        }}
+        onSubmit={form.handleSubmit(onSubmitHandler)}
         className="max-w-md  space-y-3"
       >
         <FormField
@@ -84,9 +95,10 @@ export function InputForm() {
             </FormItem>
           )}
         />
+
         {/* Show pending state while submiting */}
         <Button disabled={isPending} type="submit">
-          {isPending ? "Submiting.." : "Submit"}
+          {isPending ? <LoaderCircle className="animate-spin" /> : "Submit"}
         </Button>
 
         {/* Show error messages from server */}

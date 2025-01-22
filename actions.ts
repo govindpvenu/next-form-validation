@@ -1,6 +1,5 @@
 "use server"
 
-import { error } from "console"
 import { FormSchema } from "./schema/FormSchema"
 
 export async function onSubmitAction(prevState: any, formData: FormData) {
